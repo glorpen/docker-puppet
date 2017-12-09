@@ -1,0 +1,16 @@
+mod 'puppetlabs/stdlib', '4.24.0'
+mod 'puppetlabs/concat', '4.0.1'
+mod 'puppetlabs/inifile', '2.1.1'
+mod 'puppetlabs/ruby', '1.0.0'
+mod 'puppetlabs/vcsrepo', '2.2.0'
+mod 'puppetlabs/git', '0.5.0'
+mod 'puppet/r10k', '6.3.1'
+mod 'puppetlabs/puppetserver_gem', '1.0.0'
+mod 'puppetlabs/puppetdb', '6.0.2'
+
+mod 'puppet/puppetserver',
+    :git => 'https://github.com/voxpupuli/puppet-puppetserver.git',
+    :commit => 'b209667cff205fa6bd8004d8b3c65bfc29f3d9be'
+    
+mod 'herculesteam/augeasproviders_core', '2.1.4' 
+mod 'camptocamp/augeas', '1.6.0'

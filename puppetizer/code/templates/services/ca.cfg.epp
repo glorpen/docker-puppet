@@ -1,0 +1,6 @@
+<% if $ca { %>
+puppetlabs.services.ca.certificate-authority-service/certificate-authority-service
+puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service/filesystem-watch-service
+<% } else { %>
+puppetlabs.services.ca.certificate-authority-disabled-service/certificate-authority-disabled-service
+<% } %>
