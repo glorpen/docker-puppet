@@ -1,6 +1,6 @@
 class puppetizer_main (
   Hash $gems = {},
-  String $puppetdb_host = 'localhost',
+  Optional[String] $puppetdb_host = undef,
   Hash $java_args = {},
   Boolean $metrics = false,
   Boolean $profiler = false,
@@ -11,10 +11,11 @@ class puppetizer_main (
   include ::puppetdb::params
   
   $user = 'puppet'
+  $version = '5.3.1'
   
 # TODO: move config to another class
 # TODO: external ca
-# TODO: nginx proxy from another container (?)
+# TODO: nginx proxy from another container (?) nginx public x1 => nginx ssl x1 => puppetmaster xN
   
   $gems.each | $k, $v | {
     package { $k:
@@ -25,7 +26,7 @@ class puppetizer_main (
   }
   
   class { ::puppetserver:
-    version => '5.1.4',
+    version => $version,
     start => $::puppetizer['running']
   }
   
@@ -94,13 +95,28 @@ class puppetizer_main (
   
   #"runuser -u ${user} -- /opt/puppetlabs/server/apps/puppetserver/bin/puppetserver reload"
   
-  class { ::puppetdb::master::config:
-    puppetdb_server => $puppetdb_host,
-    puppetdb_disable_ssl => true,
-    strict_validation => false,
-    puppet_service_name => $::puppetserver::service,
-    restart_puppet => $::puppetizer['running'],
-    require => Anchor['puppetserver-config'],
+  if $puppetdb_host == undef {
+    file { "${::puppetdb::params::puppet_confdir}/routes.yaml":
+      ensure => absent,
+      backup => false
+    }
+    
+    ini_setting { "puppet.conf-storeconfigs":
+      setting => 'storeconfigs',
+      path    => '/etc/puppetlabs/puppet/puppet.conf',
+      value   => false,
+      section => 'master'
+    }
+  } else {
+    class { ::puppetdb::master::config:
+      puppetdb_server => $puppetdb_host,
+      puppetdb_disable_ssl => true,
+      strict_validation => false,
+      puppet_service_name => $::puppetserver::service,
+      restart_puppet => $::puppetizer['running'],
+      require => Anchor['puppetserver-config'],
+    }
+    
   }
   
   anchor { 'puppetserver-install': }->
@@ -121,4 +137,5 @@ class puppetizer_main (
 #  puppetizer::health { 'sleep':
 #    command => '/bin/kill -0 $(cat /tmp/sleep.pid); exit $?'
 #  }
+
 }

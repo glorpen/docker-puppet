@@ -1,4 +1,4 @@
-FROM glorpen/puppet-base:centos7
+FROM glorpen/puppetizer-base:centos-latest
 
 LABEL maintainer="Arkadiusz Dzięgiel <arkadiusz.dziegiel@glorpen.pl>"
 
