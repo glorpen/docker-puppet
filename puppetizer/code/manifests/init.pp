@@ -7,7 +7,7 @@ class puppetizer_main (
   Boolean $external_ca = false,
   Boolean $external_ssl_termination = false,
   Integer $max_instances = 1,
-  Optional[String] $vault_token = undef
+  Optional[String] $r10k_repo = undef,
 ){
   include ::stdlib
   include ::puppetdb::params
@@ -139,15 +139,17 @@ class puppetizer_main (
   anchor { 'puppetserver-run': }->
   Service[$::puppetserver::service]
   
-#  package { 'json':
-#    ensure   => present,
-#    provider => puppetserver_gem,
-#  }
-  
-#  class { 'r10k':
-#    remote   => 'git@github.com:someuser/puppet.git',
-#    provider => 'puppet_gem',
-#  }
+  if $r10k_repo {
+    package { 'json':
+      ensure   => present,
+      provider => puppetserver_gem,
+    }
+    
+    class { 'r10k':
+      remote   => $r10k_repo,
+      provider => 'puppet_gem',
+    }
+  }
   
 #  puppetizer::health { 'sleep':
 #    command => '/bin/kill -0 $(cat /tmp/sleep.pid); exit $?'
