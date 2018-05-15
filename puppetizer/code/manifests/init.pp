@@ -4,8 +4,10 @@ class puppetizer_main (
   Hash $java_args = {},
   Boolean $metrics = false,
   Boolean $profiler = false,
-  Boolean $external_ca = false, # TODO
-  Integer $instances = 1
+  Boolean $external_ca = false,
+  Boolean $external_ssl_termination = false,
+  Integer $max_instances = 1,
+  Optional[String] $vault_token = undef
 ){
   include ::stdlib
   include ::puppetdb::params
@@ -13,9 +15,8 @@ class puppetizer_main (
   $user = 'puppet'
   $version = '5.3.1'
   
-# TODO: move config to another class
-# TODO: external ca
-# TODO: nginx proxy from another container (?) nginx public x1 => nginx ssl x1 => puppetmaster xN
+# TODO: https://puppet.com/docs/puppetserver/5.0/external_ssl_termination.html
+# TODO: vault?
   
   $gems.each | $k, $v | {
     package { $k:
@@ -42,15 +43,27 @@ class puppetizer_main (
     'http-client.metrics-enabled' => $metrics,
     'profiler.enabled' => $profiler,
     'jruby-puppet.use-legacy-auth-conf' => false,
-    'jruby-puppet.max-active-instances' => $instances
+    'jruby-puppet.max-active-instances' => $max_instances
   }
   
   $_java_args.each | $k, $v | {
     puppetserver::config::java_arg { $k: value   => String($v) }
   }
   
+  $conf_puppet_base_dir = '/etc/puppetlabs/puppet'
+  $conf_base_dir = '/etc/puppetlabs/puppetserver'
+  $conf_services_dir = "${conf_base_dir}/services.d"
+  
   $config = {
     'puppetserver.conf' => $_puppetserver_opts,
+    # https://puppet.com/docs/puppetserver/5.0/external_ca_configuration.html
+    'webserver.conf' => {
+      'webserver.ssl-cert' => "${conf_puppet_base_dir}/ssl/certs/puppet.pem",
+      'webserver.ssl-key' => "${conf_puppet_base_dir}/ssl/private_keys/puppet.pem",
+      'webserver.ssl-ca-cert' => "${conf_puppet_base_dir}/ssl/certs/ca.pem",
+      #'webserver.ssl-cert-chain' => "${conf_puppet_base_dir}/ssl/certs/ca-chain.pem",
+      #'ssl-crl-path : /etc/puppetlabs/puppet/ssl/crl.pem
+    }
   }
   
   $config.each | $target, $conf | {
@@ -66,10 +79,6 @@ class puppetizer_main (
       }
     }
   }
-  # TODO: /etc/puppetlabs/puppetserver/services.d/ca.cfg
-  
-  $conf_base_dir = '/etc/puppetlabs/puppetserver'
-  $conf_services_dir = "${conf_base_dir}/services.d"
   
   file {$conf_services_dir:
     ensure => directory,
@@ -79,7 +88,7 @@ class puppetizer_main (
     force => true,
     notify => Service[$::puppetserver::service]
   }->
-  file { "${conf_services_dir}/ca.cfg":
+  file { "${conf_services_dir}/ca.cfg": #conditional disable internal ca
     ensure => present,
     content => epp('puppetizer_main/services/ca.cfg.epp', {'ca'=>!$external_ca}),
     notify => Service[$::puppetserver::service]
@@ -93,9 +102,15 @@ class puppetizer_main (
     provider => 'base',
   }
   
-  #"runuser -u ${user} -- /opt/puppetlabs/server/apps/puppetserver/bin/puppetserver reload"
+  ini_setting { "puppet.conf-certname":
+    section => 'master',
+    setting => 'certname',
+    path    => '/etc/puppetlabs/puppet/puppet.conf',
+    value   => 'puppet'
+  }
   
   if $puppetdb_host == undef {
+    # image should be built with puppetdb support, disable it on runtime if needed
     file { "${::puppetdb::params::puppet_confdir}/routes.yaml":
       ensure => absent,
       backup => false
