@@ -8,7 +8,8 @@ class puppetizer_main (
   Boolean $external_ssl_termination = false,
   Integer $max_instances = 1,
   Optional[String] $r10k_repo = undef,
-  String $certname = 'puppet'
+  String $certname = 'puppet',
+  Integer $port = 8140
 ){
   include ::stdlib
   include ::puppetdb::params
@@ -55,14 +56,15 @@ class puppetizer_main (
   $conf_puppet_code_dir = "${conf_puppet_base_dir}/code"
   $conf_base_dir = '/etc/puppetlabs/puppetserver'
   $conf_services_dir = "${conf_base_dir}/services.d"
+  $conf_puppet_ssl_dir = "${conf_puppet_base_dir}/ssl"
   
   $config = {
     'puppetserver.conf' => $_puppetserver_opts,
     # https://puppet.com/docs/puppetserver/5.0/external_ca_configuration.html
     'webserver.conf' => {
-      'webserver.ssl-cert' => "${conf_puppet_base_dir}/ssl/certs/${certname}.pem",
-      'webserver.ssl-key' => "${conf_puppet_base_dir}/ssl/private_keys/${certname}.pem",
-      'webserver.ssl-ca-cert' => "${conf_puppet_base_dir}/ssl/certs/ca.pem",
+      'webserver.ssl-cert' => "${conf_puppet_ssl_dir}/certs/${certname}.pem",
+      'webserver.ssl-key' => "${conf_puppet_ssl_dir}/private_keys/${certname}.pem",
+      'webserver.ssl-ca-cert' => "${conf_puppet_ssl_dir}/certs/ca.pem",
       #'webserver.ssl-cert-chain' => "${conf_puppet_base_dir}/ssl/certs/ca-chain.pem",
       #'ssl-crl-path : /etc/puppetlabs/puppet/ssl/crl.pem
     }
@@ -111,10 +113,16 @@ class puppetizer_main (
     value   => $certname
   }
   ini_setting { "puppet.conf-hiera-master":
+    section => 'master',
     setting => 'hiera_config',
     path    => "${conf_puppet_base_dir}/puppet.conf",
     value   => "${conf_puppet_base_dir}/hiera-master.yaml",
-    section => 'master'
+  }
+  ini_setting { "puppet.conf-masterport":
+    section => 'master',
+    setting => 'masterport',
+    path    => "${conf_puppet_base_dir}/puppet.conf",
+    value   => $port,
   }
   
   if $puppetdb_host == undef {
@@ -160,5 +168,13 @@ class puppetizer_main (
       provider => 'puppet_gem',
     }
   }
-
+  
+  file { '/usr/local/bin/make_puppet_installer':
+    mode => 'a+rx',
+    content => epp('puppetizer_main/make_installer.sh.epp', {
+      'master_ssl_dir' => $conf_puppet_ssl_dir,
+      'puppetserver' => $certname,
+      'puppetserver_port' => $port
+    })
+  }
 }

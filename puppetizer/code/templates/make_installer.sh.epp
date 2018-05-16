@@ -1,0 +1,79 @@
+#!/bin/bash
+
+#
+# author: Arkadiusz Dzięgiel <arkadiusz.dziegiel@glorpen.pl>
+#
+
+set -e
+
+name="${1}"
+output="${2}"
+
+if [ -z "${name}" ] || [ -z "${output}" ];
+then
+	cat << EOF
+Puppet Installer
+
+Usage: $(basename ${0}) <node name> <output>
+
+EOF
+	exit 1
+fi
+
+puppet_agent_dir=/etc/puppetlabs/puppet
+master_ssl_dir=<%=$master_ssl_dir%>
+agent_ssl_dir="${puppet_agent_dir}/ssl"
+
+if [ ! -f "${master_ssl_dir}/certs/${name}.pem" ];
+then
+	echo "Puppetmaster does not have certificate for node ${name}, generating"
+	#TODO: if local, if vault, if other
+	puppet cert generate "${name}"
+fi
+
+echo "Writting install script"
+
+
+cat << EOF > "${output}"
+#!/bin/bash -e
+
+payload_offset=0
+
+echo "Installing puppet-agent"
+yum -y --nogpgcheck localinstall https://yum.puppetlabs.com/puppet5/puppet5-release-el-7.noarch.rpm 
+yum -y install puppet-agent
+
+echo "Creating configuration"
+cat << EOS > "${puppet_agent_dir}/puppet.conf"
+[agent]
+server = <%= $puppetserver %>
+masterport = <%= $puppetserver_port %>
+certname = ${name}
+EOS
+
+echo "Installing certificates"
+mkdir -p "${agent_ssl_dir}"
+tail -n +\${payload_offset} \$0 | tar -xvzpf - -C "${agent_ssl_dir}"
+
+echo "Puppet agent was installed and configured."
+echo "You can now test instalation with 'puppet agent --test --noop'"
+
+exit 0
+
+EOF
+
+sed -i "${output}" -e 's/^payload_offset=0$/payload_offset='$(($(cat "${output}" | wc -l) + 1))'/'
+
+echo "Creating payload for ${name}, storing:"
+
+tar \
+--transform='s@^/\([^/]\+/\)\{'$(grep -o '/' <<< $master_ssl_dir | wc -l)'\}@@' \
+--transform='s@^\([a-z]\+\)-keys/@\1_keys/@' \
+--owner=0 --group=0 \
+-Pcvzpf - \
+"${master_ssl_dir}/certs/ca.pem" \
+"${master_ssl_dir}/certs/${name}.pem" \
+"${master_ssl_dir}/private_keys/${name}.pem" \
+"${master_ssl_dir}/public_keys/${name}.pem" >> "${output}"
+
+echo "Installer ${output} created"
