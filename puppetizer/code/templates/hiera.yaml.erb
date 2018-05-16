@@ -1,0 +1,8 @@
+---
+#
+# This file is managed by Puppet
+#
+version: 5
+<%
+require 'yaml'
+%><%= YAML.dump({"defaults" => @_hiera_defaults,"hierarchy" => @_hiera_hierarchy}).lines.to_a[1..-1].join %>

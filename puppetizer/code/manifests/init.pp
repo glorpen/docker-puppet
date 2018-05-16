@@ -52,6 +52,7 @@ class puppetizer_main (
   }
   
   $conf_puppet_base_dir = '/etc/puppetlabs/puppet'
+  $conf_puppet_code_dir = "${conf_puppet_base_dir}/code"
   $conf_base_dir = '/etc/puppetlabs/puppetserver'
   $conf_services_dir = "${conf_base_dir}/services.d"
   
@@ -106,8 +107,14 @@ class puppetizer_main (
   ini_setting { "puppet.conf-certname":
     section => 'master',
     setting => 'certname',
-    path    => '/etc/puppetlabs/puppet/puppet.conf',
+    path    => "${conf_puppet_base_dir}/puppet.conf",
     value   => $certname
+  }
+  ini_setting { "puppet.conf-hiera-master":
+    setting => 'hiera_config',
+    path    => "${conf_puppet_base_dir}/puppet.conf",
+    value   => "${conf_puppet_base_dir}/hiera-master.yaml",
+    section => 'master'
   }
   
   if $puppetdb_host == undef {
@@ -119,7 +126,7 @@ class puppetizer_main (
     
     ini_setting { "puppet.conf-storeconfigs":
       setting => 'storeconfigs',
-      path    => '/etc/puppetlabs/puppet/puppet.conf',
+      path    => "${conf_puppet_base_dir}/puppet.conf",
       value   => false,
       section => 'master'
     }
@@ -135,25 +142,23 @@ class puppetizer_main (
     
   }
   
+  include ::puppetizer_main::hiera
+  
   anchor { 'puppetserver-install': }->
   anchor { 'puppetserver-config': }->
   anchor { 'puppetserver-run': }->
   Service[$::puppetserver::service]
   
-  if $r10k_repo {
+  if $r10k_repo != undef {
+    Anchor['puppetserver-config']->
     package { 'json':
       ensure   => present,
       provider => puppetserver_gem,
-    }
-    
+    }->
     class { 'r10k':
       remote   => $r10k_repo,
       provider => 'puppet_gem',
     }
   }
-  
-#  puppetizer::health { 'sleep':
-#    command => '/bin/kill -0 $(cat /tmp/sleep.pid); exit $?'
-#  }
 
 }
