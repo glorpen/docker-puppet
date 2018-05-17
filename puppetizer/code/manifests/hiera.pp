@@ -3,6 +3,13 @@ class puppetizer_main::hiera (
   Optional[Array] $hiera_hierarchy = undef,
 ){
   
+  ini_setting { "puppet.conf-hiera-master":
+    section => 'master',
+    setting => 'hiera_config',
+    path    => "${::puppetizer_main::conf_puppet_base_dir}/puppet.conf",
+    value   => "${::puppetizer_main::conf_puppet_base_dir}/hiera-master.yaml",
+  }
+  
   $def_hiera_defaults = {"data_hash" => 'yaml_data'}
   $def_hiera_hierarchy = [
     {

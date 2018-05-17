@@ -27,8 +27,12 @@ agent_ssl_dir="${puppet_agent_dir}/ssl"
 if [ ! -f "${master_ssl_dir}/certs/${name}.pem" ];
 then
 	echo "Puppetmaster does not have certificate for node ${name}, generating"
-	#TODO: if local, if vault, if other
+    <% if ! $external_ca { %>
 	puppet cert generate "${name}"
+	<% } else { %>
+	echo "Puppetmaster does not have certificate for node ${name}, aborting"
+	exit 2
+	<% } %>
 fi
 
 echo "Writting install script"

@@ -1,18 +1,15 @@
 class puppetizer_main (
   Hash $gems = {},
-  Optional[String] $puppetdb_host = undef,
   Hash $java_args = {},
   Boolean $metrics = false,
   Boolean $profiler = false,
   Boolean $external_ca = false,
   Boolean $external_ssl_termination = false,
   Integer $max_instances = 1,
-  Optional[String] $r10k_repo = undef,
   String $certname = 'puppet',
   Integer $port = 8140
 ){
   include ::stdlib
-  include ::puppetdb::params
   
   $user = 'puppet'
   $version = '5.3.1'
@@ -112,12 +109,6 @@ class puppetizer_main (
     path    => "${conf_puppet_base_dir}/puppet.conf",
     value   => $certname
   }
-  ini_setting { "puppet.conf-hiera-master":
-    section => 'master',
-    setting => 'hiera_config',
-    path    => "${conf_puppet_base_dir}/puppet.conf",
-    value   => "${conf_puppet_base_dir}/hiera-master.yaml",
-  }
   ini_setting { "puppet.conf-masterport":
     section => 'master',
     setting => 'masterport',
@@ -125,56 +116,30 @@ class puppetizer_main (
     value   => $port,
   }
   
-  if $puppetdb_host == undef {
-    # image should be built with puppetdb support, disable it on runtime if needed
-    file { "${::puppetdb::params::puppet_confdir}/routes.yaml":
-      ensure => absent,
-      backup => false
-    }
-    
-    ini_setting { "puppet.conf-storeconfigs":
-      setting => 'storeconfigs',
-      path    => "${conf_puppet_base_dir}/puppet.conf",
-      value   => false,
-      section => 'master'
-    }
-  } else {
-    class { ::puppetdb::master::config:
-      puppetdb_server => $puppetdb_host,
-      puppetdb_disable_ssl => true,
-      strict_validation => false,
-      puppet_service_name => $::puppetserver::service,
-      restart_puppet => $::puppetizer['running'],
-      require => Anchor['puppetserver-config'],
-    }
-    
-  }
-  
+  include ::puppetizer_main::puppetdb
   include ::puppetizer_main::hiera
+  include ::puppetizer_main::r10k
   
   anchor { 'puppetserver-install': }->
   anchor { 'puppetserver-config': }->
   anchor { 'puppetserver-run': }->
   Service[$::puppetserver::service]
   
-  if $r10k_repo != undef {
-    Anchor['puppetserver-config']->
-    package { 'json':
-      ensure   => present,
-      provider => puppetserver_gem,
-    }->
-    class { 'r10k':
-      remote   => $r10k_repo,
-      provider => 'puppet_gem',
-    }
-  }
-  
   file { '/usr/local/bin/make_puppet_installer':
     mode => 'a+rx',
     content => epp('puppetizer_main/make_installer.sh.epp', {
       'master_ssl_dir' => $conf_puppet_ssl_dir,
       'puppetserver' => $certname,
-      'puppetserver_port' => $port
+      'puppetserver_port' => $port,
+      'external_ca' => $external_ca
     })
+  }
+  
+  Anchor['puppetserver-install']->
+  file { '/var/log/puppetlabs/puppetserver':
+    ensure => 'directory',
+    mode => 'u=rwx',
+    owner => 'puppet',
+    group => 'puppet',
   }
 }
