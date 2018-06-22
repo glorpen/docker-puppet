@@ -50,7 +50,7 @@ class puppetizer_main (
   }
   
   $conf_puppet_base_dir = '/etc/puppetlabs/puppet'
-  $conf_puppet_code_dir = "${conf_puppet_base_dir}/code"
+  $conf_code_dir = '/etc/puppetlabs/code'
   $conf_base_dir = '/etc/puppetlabs/puppetserver'
   $conf_services_dir = "${conf_base_dir}/services.d"
   $conf_puppet_ssl_dir = "${conf_puppet_base_dir}/ssl"

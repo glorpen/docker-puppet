@@ -29,13 +29,13 @@ class puppetizer_main::hiera (
   
   $_hiera_defaults = merge(
     pick($hiera_defaults, $def_hiera_defaults),
-    { 'datadir' => "${::puppetizer_main::conf_puppet_code_dir}/environments/%{environment}/hieradata" }
+    { 'datadir' => "${::puppetizer_main::conf_code_dir}/environments/%{environment}/hieradata" }
   )
   $_hiera_hierarchy = pick($hiera_hierarchy, $def_hiera_hierarchy)
   
   file { "${::puppetizer_main::conf_puppet_base_dir}/hiera-master.yaml":
     ensure => 'present',
-    mode => "a=,gu+rX,u+w",
+    mode => "a=r,gu+rX,u+w",
     owner => 'root',
     group => 'root',
     content => template('puppetizer_main/hiera.yaml.erb'),
