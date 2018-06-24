@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 #
 # author: Arkadiusz Dzięgiel <arkadiusz.dziegiel@glorpen.pl>
@@ -44,8 +44,19 @@ cat << EOF > "${output}"
 payload_offset=0
 
 echo "Installing puppet-agent"
-yum -y --nogpgcheck localinstall https://yum.puppetlabs.com/puppet5/puppet5-release-el-7.noarch.rpm 
-yum -y install puppet-agent
+if yum --version &> /dev/null;
+then
+    echo "Using yum"
+    yum -y --nogpgcheck localinstall https://yum.puppetlabs.com/puppet5/puppet5-release-el-7.noarch.rpm 
+    yum -y install puppet-agent
+elif emerge --version &> /dev/null;
+then
+    echo "Using portage"
+    emerge puppet-agent --ask
+else
+    echo "Unknown package manager"
+    exit 1
+fi
 
 echo "Creating configuration"
 cat << EOS > "${puppet_agent_dir}/puppet.conf"
