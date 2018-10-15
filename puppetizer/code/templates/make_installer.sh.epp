@@ -53,6 +53,14 @@ elif emerge --version &> /dev/null;
 then
     echo "Using portage"
     emerge puppet-agent --ask
+elif apt --version &> /dev/null;
+then
+    echo "Using apt"
+    curl https://apt.puppetlabs.com/puppet5-release-\$(lsb_release -cs).deb > puppet-repo.deb 
+    dpkg -i puppet-repo.deb
+    rm puppet-repo.deb
+    apt update
+    apt install -y puppet-agent
 else
     echo "Unknown package manager"
     exit 1
