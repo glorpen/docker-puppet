@@ -1,3 +1,0 @@
-puppetizer_main::certname: 'puppet'
-puppetizer_main::puppetdb::host: 'localhost'
-puppetizer_main::r10k::repo: "127.0.0.1"
