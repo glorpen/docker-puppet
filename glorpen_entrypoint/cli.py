@@ -30,7 +30,7 @@ def add_vault_auth_arguments(parser):
     parser.add_argument('--vault-server-cert', type=str, default=None)
 
 def add_vault_cert_arguments(parser, cn=True):
-    parser.add_argument('--path', default=os.environ.get("VAULT_PATH"))
+    parser.add_argument('--path', default=os.environ.get("VAULT_PATH", "pki"))
     parser.add_argument('--role', default=os.environ.get("VAULT_ROLE"))
     if cn:
         parser.add_argument('--cn', default=os.environ.get("VAULT_CN"))

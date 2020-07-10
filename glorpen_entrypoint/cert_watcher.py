@@ -47,8 +47,8 @@ class CertWatcher(object):
 
         self.schedule_token_renew()
 
-    def load_certs(self):
-        self.logger.info("Loading certs")
+    def get_certs(self):
+        self.logger.info("Fetching certs")
         # TODO: error when no vault?
         cert_response = self.client.secrets.pki.generate_certificate(
             mount_point=self.path,
@@ -59,10 +59,20 @@ class CertWatcher(object):
             }
         )
 
-        self._ssl_crl = self.client.secrets.pki.read_crl(self.path)
-        self._ssl_cert = cert_response["data"]["certificate"]
-        self._ssl_ca_cert = cert_response["data"]["issuing_ca"]
-        self._ssl_key = cert_response["data"]["private_key"]
+        return {
+            "crl": self.client.secrets.pki.read_crl(self.path),
+            "cert": cert_response["data"]["certificate"],
+            "ca": cert_response["data"]["issuing_ca"],
+            "key": cert_response["data"]["private_key"]
+        }
+
+    def load_certs(self):
+        certs = self.get_certs()
+        
+        self._ssl_crl = certs["crl"]
+        self._ssl_cert = certs["cert"]
+        self._ssl_ca_cert = certs["ca"]
+        self._ssl_key = certs["key"]
 
         self.schedule_certs_renew()
 
