@@ -69,18 +69,20 @@ class Runner(object):
         if self._proc:
             self.logger.info("Reloading process")
             self.do_reload(self._proc)
-
-    def refresh(self):
-        if not self._proc:
-            self.start()
-        else:
-            self.reload()
     
-    def wait(self):
-        self.logger.info("Waiting for process to exit")
-        ret = self._proc.wait()
-        self.logger.info("Process exitted")
-        return ret
+    def step(self):
+        if self._proc.poll() is not None:
+            self.logger.info("Process exitted")
+            return False
+    
+    def stop(self):
+        if self._proc:
+            self.logger.info("Stopping process")
+            self.do_stop(self._proc)
+    
+    def do_stop(self, proc):
+        proc.kill()
+        return proc.wait()
     
     def do_reload(self, proc):
         proc.send_signal(signal.SIGHUP)

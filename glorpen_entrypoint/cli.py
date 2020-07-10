@@ -1,6 +1,8 @@
 import re
 import datetime
 import os
+import time
+import logging
 
 def type_timedelta(v):
     time_map = {
@@ -38,3 +40,37 @@ def add_vault_cert_arguments(parser, cn=True):
 
 def add_catchall_argument(parser):
     parser.add_argument('args', nargs='*')
+
+def steps_runner(watcher, runner, interval=5):
+    logger = logging.getLogger("StepsRunner")
+
+    ret = 1
+    started = []
+    running = True
+
+    try:
+        watcher.load_certs()
+        started.append(watcher)
+        runner.start()
+        started.append(runner)
+        
+        while running:
+            logger.debug("Running steps")
+            for i in started:
+                if i.step() is False:
+                    running = False
+                    break
+            
+            if running:
+                time.sleep(interval)
+    finally:
+        logger.debug("Cleaning up")
+        if watcher in started:
+            try:
+                watcher.logout()
+            except:
+                pass
+        if runner in started:
+            ret = runner.stop()
+    
+    return ret

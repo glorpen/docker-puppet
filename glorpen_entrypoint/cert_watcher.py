@@ -68,7 +68,7 @@ class CertWatcher(object):
 
     def load_certs(self):
         certs = self.get_certs()
-        
+
         self._ssl_crl = certs["crl"]
         self._ssl_cert = certs["cert"]
         self._ssl_ca_cert = certs["ca"]
@@ -87,15 +87,13 @@ class CertWatcher(object):
         # Use a stagger over 85%-95% of the lease duration so that many clients do not hit Vault simultaneously
         # sleep = sleep * (.85 + rand.Float64()*0.1)
 
-        self._cancel_timer("cert")
-
         # we ignore CA ttl since it always should be bigger than out cert
         
         cert = x509.load_pem_x509_certificate(self._ssl_cert.encode(), default_backend())
-        sleep_seconds = (cert.not_valid_after - datetime.datetime.utcnow()).total_seconds() * (0.85 + random.random() * 0.1)
+        sleep_time = (cert.not_valid_after - datetime.datetime.utcnow()) * (0.85 + random.random() * 0.1)
         
-        self._timer_cert = threading.Timer(sleep_seconds, self.load_certs)
-        self._timer_cert.start()
+        self._timer_cert = datetime.datetime.now() + sleep_time
+        self.logger.info("Will renew cert on %s", self._timer_cert)
     
     def schedule_token_renew(self):
         # https://github.com/hashicorp/consul-template/blob/master/dependency/vault_common.go
@@ -104,19 +102,14 @@ class CertWatcher(object):
 		# Use some randomness so many clients do not hit Vault simultaneously.
 		# sleep = sleep * (rand.Float64() + 1) / 2.0
 
-        self._cancel_timer("token")
-
         info = self.client.lookup_token()
 
         if not info["renewable"]:
             return
         
         if info["ttl"] > 0:
-            self._timer_token = threading.Timer(
-                info["ttl"] / 3.0 * (random.random() + 1) / 2.0,
-                self.renew_token
-            )
-            self._timer_token.start()
+            self._timer_token = datetime.datetime.now() + (info["ttl"] / 3.0 * (random.random() + 1) / 2.0)
+            self.logger.info("Will renew token on %s", self._timer_token)
         else:
             self.renew_token()
             self.schedule_token_renew()
@@ -124,15 +117,21 @@ class CertWatcher(object):
     def on_cert(self, cert, private_key, ca_cert, crl):
         pass
 
-    def _cancel_timer(self, name):
-        attr = f"_timer_{name}"
-        timer = getattr(self, attr)
-        if timer:
-            timer.cancel()
-            setattr(self, attr, None)
+    def step(self):
+        # not async since for now it is simple and hvac is not async
+        now = datetime.datetime.now()
+
+        if self._timer_token and now > self._timer_token:
+            self.logger.debug("Token needs renewing")
+            self._timer_token = None
+            self.renew_token()
+        
+        if self._timer_cert and now > self._timer_cert:
+            self.logger.debug("Cert needs renewing")
+            self._timer_cert = None
+            self.load_certs()
 
     def logout(self):
-        self._cancel_timer("token")
-        self._cancel_timer("cert")
-
+        self._timer_token = None
+        self._timer_cert = None
         self.client.logout()

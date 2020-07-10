@@ -30,9 +30,12 @@ renderer = Renderer(
 
 def reload(proc):
     subprocess.run(["/opt/puppetlabs/bin/puppetserver", "reload"])
+def stop(proc):
+    subprocess.run(["/opt/puppetlabs/bin/puppetserver", "stop"])
 
 runner = Runner(ns.args)
 runner.do_reload = reload
+runner.do_stop = stop
 
 watcher.on_cert = renderer.render
 renderer.on_render = runner.refresh
@@ -46,12 +49,5 @@ watcher.login(
     client_key_path=ns.vault_client_key,
     server_cert_path=ns.vault_server_cert
 )
-watcher.load_certs()
 
-ret = 1
-try:
-    ret = runner.wait()
-finally:
-    watcher.logout()
-
-sys.exit(ret)
+sys.exit(glorpen_entrypoint.cli.steps_runner(watcher, runner))
