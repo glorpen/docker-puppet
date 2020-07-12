@@ -27,7 +27,7 @@ echo "Installing puppet-agent ..."
 if yum --version &> /dev/null;
 then
     echo "Using yum"
-    yum -y --nogpgcheck localinstall https://yum.puppetlabs.com/puppet6/puppet6-release-el-8.noarch.rpm 
+    yum -y --nogpgcheck localinstall https://yum.puppetlabs.com/puppet6/puppet6-release-el-$(rpm -E %{{rhel}}).noarch.rpm 
     yum -y install puppet-agent
 elif emerge --version &> /dev/null;
 then
