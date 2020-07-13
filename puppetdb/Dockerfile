@@ -16,5 +16,5 @@ COPY puppetdb/entrypoint.py /usr/lib/python3/dist-packages/glorpen_entrypoint/__
 
 ENV USE_PUPPETSERVER=false
 
-ENTRYPOINT ["dumb-init", "python3", "-m", "glorpen_entrypoint"]
+ENTRYPOINT ["dumb-init", "-c", "python3", "-m", "glorpen_entrypoint"]
 CMD ["--", "/docker-entrypoint.sh", "foreground"]
