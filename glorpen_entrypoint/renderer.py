@@ -52,6 +52,7 @@ class Runner(object):
     
     def send_signal(self, sig, stack=None):
         if self._proc:
+            self.logger.debug("Sending signal %d", sig)
             self._proc.send_signal(sig)
 
     def setup_signals(self):
@@ -64,6 +65,7 @@ class Runner(object):
         self.logger.info("Starting process")
         self.setup_signals()
         self._proc = subprocess.Popen(self._args)
+        self.logger.debug("Started process on pid %d", self._proc.pid)
 
     def reload(self, *args):
         if self._proc:
@@ -71,8 +73,9 @@ class Runner(object):
             self.do_reload(self._proc)
     
     def step(self):
-        if self._proc.poll() is not None:
-            self.logger.info("Process exitted")
+        ret = self._proc.poll()
+        if ret is not None:
+            self.logger.info("Process exitted with %d", ret)
             return False
     
     def stop(self):
@@ -85,4 +88,5 @@ class Runner(object):
         return proc.wait()
     
     def do_reload(self, proc):
+        self.logger.debug("Sending reload signal")
         proc.send_signal(signal.SIGHUP)
