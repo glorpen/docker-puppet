@@ -21,6 +21,15 @@ def type_timedelta(v):
 
     return datetime.timedelta(**kwargs)
 
+def get_verbosity(v):
+    levels = [
+        logging.ERROR,
+        logging.WARNING,
+        logging.INFO,
+        logging.DEBUG,
+    ]
+    return levels[min(len(levels)-1, v)]
+
 def add_vault_auth_arguments(parser):
     parser.add_argument('--vault-addr', default=os.environ.get("VAULT_ADDR", None))
     parser.add_argument('--vault-token', default=os.environ.get("VAULT_TOKEN", None))
@@ -40,6 +49,9 @@ def add_vault_cert_arguments(parser, cn=True):
 
 def add_catchall_argument(parser):
     parser.add_argument('args', nargs='*')
+
+def add_verbosity_argument(parser):
+    parser.add_argument('--verbose', '-v', action="count", default=0)
 
 def steps_runner(watcher, runner, interval=5):
     logger = logging.getLogger("StepsRunner")

@@ -10,6 +10,7 @@ import os
 import sys
 import hvac
 import string
+import logging
 import tarfile
 import argparse
 import datetime
@@ -110,8 +111,11 @@ p.add_argument("--server-port", default=int(os.environ.get("PUPPETSERVER_PORT", 
 
 glorpen_entrypoint.cli.add_vault_auth_arguments(p)
 glorpen_entrypoint.cli.add_vault_cert_arguments(p, cn=False)
+glorpen_entrypoint.cli.add_verbosity_argument(p)
 
 ns = p.parse_args()
+
+logging.basicConfig(level=glorpen_entrypoint.cli.get_verbosity(ns.verbose))
 
 print("Collecting certificates", file=sys.stderr)
 

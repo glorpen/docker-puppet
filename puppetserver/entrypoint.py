@@ -14,10 +14,11 @@ p = argparse.ArgumentParser("glorpen-entrypoint")
 glorpen_entrypoint.cli.add_vault_auth_arguments(p)
 glorpen_entrypoint.cli.add_vault_cert_arguments(p, cn=False)
 glorpen_entrypoint.cli.add_catchall_argument(p)
+glorpen_entrypoint.cli.add_verbosity_argument(p)
 
 ns = p.parse_args()
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=glorpen_entrypoint.cli.get_verbosity(ns.verbose))
 
 cn = os.environ["PUPPETSERVER_HOSTNAME"]
 watcher = CertWatcher(ns.path, ns.role, cn, ns.lease_ttl)
