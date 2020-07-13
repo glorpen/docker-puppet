@@ -14,5 +14,7 @@ RUN apt-get update \
 COPY glorpen_entrypoint/ /usr/lib/python3/dist-packages/glorpen_entrypoint/
 COPY puppetdb/entrypoint.py /usr/lib/python3/dist-packages/glorpen_entrypoint/__main__.py
 
+ENV USE_PUPPETSERVER=false
+
 ENTRYPOINT ["dumb-init", "python3", "-m", "glorpen_entrypoint"]
 CMD ["--", "/docker-entrypoint.sh", "foreground"]
