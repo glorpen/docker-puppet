@@ -37,7 +37,21 @@ then
 elif apt --version &> /dev/null;
 then
     echo "Using apt"
-    curl https://apt.puppetlabs.com/puppet6-release-$(lsb_release -cs).deb > puppet-repo.deb 
+    if lsb_release -h &> /dev/null;
+    then
+        version="$(lsb_release -cs)"
+    else
+        source /etc/os-release
+        version="${{VERSION_CODENAME}}"
+    fi
+    target=puppet-repo.deb
+    url="https://apt.puppetlabs.com/puppet6-release-${{version}}.deb"
+    if curl --version &> /dev/null;
+    then
+        curl ${{url}} > ${{target}}
+    else
+        wget -O ${{target}} ${{url}}
+    fi
     dpkg -i puppet-repo.deb
     rm puppet-repo.deb
     apt update
