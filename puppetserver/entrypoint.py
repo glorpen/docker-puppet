@@ -39,7 +39,7 @@ runner.do_reload = reload
 runner.do_stop = stop
 
 watcher.on_cert = renderer.render
-renderer.on_render = runner.refresh
+renderer.on_render = runner.reload
 
 watcher.login(
     addr=ns.vault_addr,

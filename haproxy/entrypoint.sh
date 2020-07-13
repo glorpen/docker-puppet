@@ -51,7 +51,7 @@ do
 done
 
 cat ${config_dir}/04-dns.conf.tpl \
-| sed -e "s/\${dns}/${DNS-127.0.0.12}/g" \
+| sed -e "s/\${dns}/${DNS-127.0.0.11}/g" \
 > ${config_dir}/04-dns.conf
 
 # collect generated configs
