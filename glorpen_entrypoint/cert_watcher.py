@@ -90,9 +90,9 @@ class CertWatcher(object):
         # we ignore CA ttl since it always should be bigger than out cert
         
         cert = x509.load_pem_x509_certificate(self._ssl_cert.encode(), default_backend())
-        sleep_time = (cert.not_valid_after - datetime.datetime.utcnow()) * (0.85 + random.random() * 0.1)
+        renewal_date = (cert.not_valid_after - cert.not_valid_before) * (0.85 + random.random() * 0.1) + cert.not_valid_before
+        self._timer_cert = renewal_date.replace(tzinfo=datetime.timezone.utc)
         
-        self._timer_cert = datetime.datetime.now() + sleep_time
         self.logger.info("Will renew cert on %s", self._timer_cert)
     
     def schedule_token_renew(self):
@@ -108,7 +108,7 @@ class CertWatcher(object):
             return
         
         if info["ttl"] > 0:
-            self._timer_token = datetime.datetime.now() + (info["ttl"] / 3.0 * (random.random() + 1) / 2.0)
+            self._timer_token = datetime.utcfromtimestamp(info["creation_ttl"]) + (info["creation_ttl"] / 3.0 * (random.random() + 1) / 2.0)
             self.logger.info("Will renew token on %s", self._timer_token)
         else:
             self.renew_token()
@@ -119,7 +119,7 @@ class CertWatcher(object):
 
     def step(self):
         # not async since for now it is simple and hvac is not async
-        now = datetime.datetime.now()
+        now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
 
         if self._timer_token and now > self._timer_token:
             self.logger.debug("Token needs renewing")
