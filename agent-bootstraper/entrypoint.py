@@ -67,6 +67,7 @@ cat << EOS > "{puppet_agent_dir}/puppet.conf"
 server = {puppetserver_name}
 masterport = {puppetserver_port}
 certname = {name}
+certificate_revocation = false
 EOS
 
 echo "Installing certificates"
@@ -100,8 +101,7 @@ exit 0
         files = {
             f"private_keys/{common_name}.pem": certs["key"],
             f"certs/{common_name}.pem": certs["cert"],
-            f"certs/ca.pem": certs["ca"],
-            f"crl.pem": certs["crl"]
+            f"certs/ca.pem": certs["ca"]
         }
         
         for ssl_path, ssl_content in files.items():

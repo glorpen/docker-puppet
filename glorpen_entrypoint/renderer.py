@@ -24,17 +24,24 @@ class Renderer(object):
         with open(t, "wt") as f:
             f.write(content)
 
-    def render(self, cert, private_key, ca_cert, crl):
+    def render_cert(self, cert, private_key, ca_cert):
         self.logger.info("Rendering certs")
 
         self._write(self.ca_path, ca_cert)
         self._write(self.cert_path, cert)
         self._write(self.key_path, private_key)
         
+        self.logger.info("Saved certs")
+
+        self.on_render()
+    
+    def render_crl(self, crl):
+        self.logger.info("Rendering crl")
+
         if self.crl_path:
             self._write(self.crl_path, crl)
         
-        self.logger.info("Saved certs")
+        self.logger.info("Saved crl")
 
         self.on_render()
     

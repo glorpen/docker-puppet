@@ -16,12 +16,14 @@ glorpen_entrypoint.cli.add_vault_cert_arguments(p, cn=False)
 glorpen_entrypoint.cli.add_catchall_argument(p)
 glorpen_entrypoint.cli.add_verbosity_argument(p)
 
+p.add_argument("--rotate-crl", help="Automatically rotate CA CRL", action="store_true", default=False)
+
 ns = p.parse_args()
 
 logging.basicConfig(level=glorpen_entrypoint.cli.get_verbosity(ns.verbose))
 
 cn = os.environ["PUPPETSERVER_HOSTNAME"]
-watcher = CertWatcher(ns.path, ns.role, cn, ns.lease_ttl)
+watcher = CertWatcher(ns.path, ns.role, cn, ns.lease_ttl, auto_rotate_crl=ns.rotate_crl)
 renderer = Renderer(
     "/etc/puppetlabs/puppet/ssl/certs/ca.pem",
     f"/etc/puppetlabs/puppet/ssl/certs/{cn}.pem",
@@ -38,7 +40,8 @@ runner = Runner(ns.args)
 runner.do_reload = reload
 runner.do_stop = stop
 
-watcher.on_cert = renderer.render
+watcher.on_cert = renderer.render_cert
+watcher.on_crl = renderer.render_crl
 renderer.on_render = runner.reload
 
 watcher.login(
@@ -51,4 +54,4 @@ watcher.login(
     server_cert_path=ns.vault_server_cert
 )
 
-sys.exit(glorpen_entrypoint.cli.steps_runner(watcher, runner))
+sys.exit(glorpen_entrypoint.cli.steps_runner(watcher, runner, watch_crl=True))

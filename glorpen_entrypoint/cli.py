@@ -53,7 +53,7 @@ def add_catchall_argument(parser):
 def add_verbosity_argument(parser):
     parser.add_argument('--verbose', '-v', action="count", default=0)
 
-def steps_runner(watcher, runner, interval=5):
+def steps_runner(watcher, runner, interval=5, watch_crl=False):
     logger = logging.getLogger("StepsRunner")
 
     ret = 1
@@ -62,6 +62,8 @@ def steps_runner(watcher, runner, interval=5):
 
     try:
         watcher.load_certs()
+        if watch_crl:
+            watcher.load_crl()
         started.append(watcher)
         runner.start()
         started.append(runner)

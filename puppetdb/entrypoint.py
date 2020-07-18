@@ -37,7 +37,7 @@ runner = Runner(ns.args)
 runner.do_reload = reload
 runner.do_stop = stop
 
-watcher.on_cert = renderer.render
+watcher.on_cert = renderer.render_cert
 renderer.on_render = runner.reload
 
 watcher.login(

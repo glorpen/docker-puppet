@@ -17,4 +17,4 @@ COPY puppetserver/entrypoint.py /usr/lib/python3/dist-packages/glorpen_entrypoin
 ENV CA_ENABLED=false
 
 ENTRYPOINT ["dumb-init", "-c", "python3", "-m", "glorpen_entrypoint"]
-CMD ["--", "/docker-entrypoint.sh", "foreground"]
+CMD ["--rotate-crl", "--", "/docker-entrypoint.sh", "foreground"]
