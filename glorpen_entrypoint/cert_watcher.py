@@ -1,20 +1,28 @@
 import hvac
+import random
+import logging
 import datetime
+import threading
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
-import threading
-import logging
-import random
+from dateutil.parser import parse as date_parser
 
 class CertWatcher(object):
     _timer_cert = None
     _timer_crl = None
     _timer_token = None
+    _timer_auth_lease = None
 
     _ssl_crl = None
     _ssl_cert = None
     _ssl_ca_cert = None
     _ssl_key = None
+
+    _auth_app_role = None
+    _auth_app_secret = None
+    _auth_mount_point = None
+
+    _needs_reauth = False
 
     auto_rotate_crl = False
 
@@ -34,7 +42,7 @@ class CertWatcher(object):
     def _now(self):
         return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
     
-    def login(self, addr, token=None, app_role=None, app_secret=None, client_cert_path=None, client_key_path=None, server_cert_path=None):
+    def login(self, addr, token=None, app_role=None, app_secret=None, client_cert_path=None, client_key_path=None, server_cert_path=None, auth_mount_point=None):
         # url=os.environ['VAULT_ADDR'],
         # token=os.environ['VAULT_TOKEN'],
 
@@ -44,16 +52,19 @@ class CertWatcher(object):
             verify = server_cert_path,
         )
 
+        self._auth_mount_point = auth_mount_point
         if token:
             self.logger.info("Using Vault token")
             self.client.token = token
+            self.schedule_token_renew()
         elif app_role and app_secret:
             self.logger.info("Using Vault app-role auth")
-            self.client.auth_approle(app_role, app_secret)
+            self._auth_app_role = app_role
+            self._auth_app_secret = app_secret
+            self.renew_auth()
         else:
             raise Exception("No auth data provided")
 
-        self.schedule_token_renew()
 
     def get_certs(self):
         self.logger.info("Fetching certs")
@@ -87,7 +98,13 @@ class CertWatcher(object):
     def renew_token(self):
         self.logger.info("Renewing vault token")
         self.client.renew_self_token()
+        self.schedule_token_renew()
     
+    def renew_auth(self):
+        self.logger.info("Reauthing")
+        self.client.auth_approle(self._auth_app_role, self._auth_app_secret, self._auth_mount_point or "approle")
+        self.schedule_token_renew()
+
     def get_crl(self):
         self.logger.info("Reading crl")
         return self.client.secrets.pki.read_crl(self.path)
@@ -143,22 +160,39 @@ class CertWatcher(object):
     
     def schedule_token_renew(self):
         # https://github.com/hashicorp/consul-template/blob/master/dependency/vault_common.go
-        # Renew at 1/3 the remaining lease. This will give us an opportunity to retry at least one more time should the first renewal fail.
-		# sleep = sleep / 3.0
+        # Renew at 2/3 the remaining lease.
+		# sleep = sleep / 3.0 * 2
 		# Use some randomness so many clients do not hit Vault simultaneously.
 		# sleep = sleep * (rand.Float64() + 1) / 2.0
 
-        info = self.client.lookup_token()
+        self.logger.debug("Scheduling token renewal")
+
+        info = self.client.lookup_token()["data"]
 
         if not info["renewable"]:
             return
         
+        if "last_renewal_time" in info:
+            creation_time = info["last_renewal_time"]
+        else:
+            creation_time = info["creation_time"]
+        
+        creation_time = datetime.datetime.fromtimestamp(creation_time, tz=datetime.timezone.utc)
+        expire_time = date_parser(info["expire_time"]).replace(tzinfo=datetime.timezone.utc)
+
+        if expire_time < creation_time + datetime.timedelta(seconds=info["creation_ttl"]):
+            if self._needs_reauth:
+                self.renew_auth()
+                return
+            else:
+                self.logger.info("Last lease, needs reauth")
+                self._needs_reauth = True
+        
         if info["ttl"] > 0:
-            self._timer_token = datetime.utcfromtimestamp(info["creation_ttl"]) + (info["creation_ttl"] / 3.0 * (random.random() + 1) / 2.0)
+            self._timer_token = creation_time + ( (expire_time - creation_time) / 3.0 * 2 * (random.random() + 1) / 2.0)
             self.logger.info("Will renew token on %s", self._timer_token)
         else:
             self.renew_token()
-            self.schedule_token_renew()
 
     def on_cert(self, cert, private_key, ca_cert):
         pass

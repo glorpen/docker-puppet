@@ -35,6 +35,7 @@ def add_vault_auth_arguments(parser):
     parser.add_argument('--vault-token', default=os.environ.get("VAULT_TOKEN", None))
     parser.add_argument('--vault-app-role', default=os.environ.get("VAULT_APP_ROLE", None))
     parser.add_argument('--vault-app-secret', default=os.environ.get("VAULT_APP_SECRET", None))
+    parser.add_argument('--vault-auth-mount', default=os.environ.get("VAULT_AUTH_MOUNT", None))
 
     parser.add_argument('--vault-client-cert', type=str, default=os.environ.get("VAULT_CLIENT_CERT", None))
     parser.add_argument('--vault-client-key', type=str, default=os.environ.get("VAULT_CLIENT_KEY", None))

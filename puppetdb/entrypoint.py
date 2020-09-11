@@ -45,6 +45,7 @@ watcher.login(
     token=ns.vault_token,
     app_role=ns.vault_app_role,
     app_secret=ns.vault_app_secret,
+    auth_mount_point=ns.vault_auth_mount,
     client_cert_path=ns.vault_client_cert,
     client_key_path=ns.vault_client_key,
     server_cert_path=ns.vault_server_cert
