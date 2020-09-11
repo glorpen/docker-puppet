@@ -28,6 +28,8 @@ Certificate generation:
 - ``--role``, ``VAULT_ROLE`` - Vault role to use
 - ``--lease-ttl``, ``VAULT_LEASE_TTL`` - Time until certificate expiration, eg. 2w(eeks), 1d10m3s
 
+To make connection to Vault with custom CA use env ``REQUESTS_CA_BUNDLE=/path/to/ca-certs.pem``.
+
 Token and certificate renewal
 =============================
 
